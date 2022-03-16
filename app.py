@@ -1,8 +1,9 @@
-import dash
-import dash_core_components as dcc
-import dash_html_components as html
+import dash 
+from dash import dcc
+from dash import html
 import plotly.graph_objs as go
 import pandas as pd
+import logging
 
 ########### Define your variables ######
 
@@ -26,21 +27,6 @@ githublink = 'https://github.com/austinlasseter/dash-map-usa-agriculture'
 import pandas as pd
 df = pd.read_csv('assets/usa-2011-agriculture.csv')
 
-fig = go.Figure(data=go.Choropleth(
-    locations=df['code'], # Spatial coordinates
-    z = df[mycolumn].astype(float), # Data to be color-coded
-    locationmode = 'USA-states', # set of locations match entries in `locations`
-    colorscale = mycolorscale,
-    colorbar_title = mycolorbartitle,
-))
-
-fig.update_layout(
-    title_text = mygraphtitle,
-    geo_scope='usa',
-    width=1200,
-    height=800
-)
-
 ########### Initiate the app
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
@@ -51,15 +37,36 @@ app.title=tabtitle
 
 app.layout = html.Div(children=[
     html.H1(myheading1),
+    dcc.Dropdown(list_of_columns[3:], ['total exports'], id='state-dropdown', multi=True),
     dcc.Graph(
-        id='figure-1',
-        figure=fig
+        id='figure-1'
     ),
     html.A('Code on Github', href=githublink),
     html.Br(),
     html.A("Data Source", href=sourceurl),
     ]
 )
+
+@app.callback(dash.dependencies.Output('figure-1', 'figure'),[dash.dependencies.Input('state-dropdown', 'value')])
+def create_map(value):
+    title = "{} Exports in Millions USD".format(value)
+    df['current_total'] = df[value].sum(axis=1)
+    fig = go.Figure(data=go.Choropleth(
+    			locations=df['code'], # Spatial coordinates
+    			z = df['current_total'].astype(float), # Data to be color-coded
+    			locationmode = 'USA-states', # set of locations match entries in `locations`
+    			colorscale = mycolorscale,
+    			colorbar_title =title,
+			))
+
+    fig.update_layout(
+    	title_text = mygraphtitle,
+    	geo_scope='usa',
+    	width=1200,
+    	height=800
+	)
+    return fig
+
 
 ############ Deploy
 if __name__ == '__main__':
